@@ -8,6 +8,7 @@ can be ingested by the knowledge pipeline.
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
@@ -193,6 +194,52 @@ class ObsidianConnector(BaseConnector):
             yield doc
 
         self._items_synced = synced
+
+    def create_note(
+        self,
+        title: str,
+        content: str,
+        *,
+        folder: str = "Jarvis/Memories",
+    ) -> Path:
+        """Create a new markdown note in the vault. Returns the absolute file path.
+
+        The note is written with YAML frontmatter (created timestamp + jarvis tag)
+        so it is easy to filter in Obsidian. If a note with the same sanitised title
+        already exists in *folder*, the new content is appended rather than
+        overwriting, preventing silent data loss.
+        """
+        safe_title = re.sub(r'[\\/:*?"<>|]', "-", title).strip()
+        note_dir = Path(self._vault_path) / folder
+        note_dir.mkdir(parents=True, exist_ok=True)
+        note_path = note_dir / f"{safe_title}.md"
+        timestamp = datetime.now(timezone.utc).isoformat()
+
+        if note_path.exists():
+            # Append under a separator so no data is lost
+            existing = note_path.read_text(encoding="utf-8")
+            note_path.write_text(
+                existing + f"\n\n---\n*Updated: {timestamp}*\n\n{content}\n",
+                encoding="utf-8",
+            )
+        else:
+            note_path.write_text(
+                f"---\ncreated: {timestamp}\ntags: [jarvis, memory]\n---\n\n{content}\n",
+                encoding="utf-8",
+            )
+        return note_path
+
+    def update_note(self, rel_path: str, content: str) -> bool:
+        """Overwrite an existing note by vault-relative path.
+
+        Returns ``False`` if the path does not exist so callers can decide
+        whether to fall back to :meth:`create_note`.
+        """
+        note_path = Path(self._vault_path) / rel_path
+        if not note_path.exists():
+            return False
+        note_path.write_text(content, encoding="utf-8")
+        return True
 
     def sync_status(self) -> SyncStatus:
         """Return sync progress from the most recent :meth:`sync` call."""

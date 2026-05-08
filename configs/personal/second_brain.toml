@@ -1,0 +1,117 @@
+# OpenJarvis — Personal Second Brain Configuration
+#
+# Setup:
+#   1. Copy this file to ~/.openjarvis/config.toml
+#   2. Set VAULT_PATH below (both occurrences) to your vault directory
+#   3. Run: ollama pull deepseek-v4-pro:cloud && ollama pull qwen2.5:7b
+#   4. Run: bash scripts/setup_second_brain.sh ~/second-brain
+
+# ═══════════════════════════════════════════════════════════════
+# PILLAR 1: Intelligence
+# Primary:  deepseek-v4-pro:cloud via Ollama — highest reasoning quality
+# Fallback: qwen2.5:7b            — fast local model, no network needed
+# ═══════════════════════════════════════════════════════════════
+[intelligence]
+default_model      = "deepseek-v4-pro:cloud"
+fallback_model     = "qwen2.5:7b"
+preferred_engine   = "ollama"
+provider           = "local"
+temperature        = 0.65       # Focused output; raise to 0.85 for more creativity
+max_tokens         = 8192       # Large window for detailed, thoughtful responses
+top_p              = 0.95
+top_k              = 50
+repetition_penalty = 1.05       # Discourages repetitive phrasing
+
+# ═══════════════════════════════════════════════════════════════
+# PILLAR 2: Agent
+# ═══════════════════════════════════════════════════════════════
+[agent]
+default_agent       = "operative"
+max_turns           = 30
+context_from_memory = true
+tools               = "web_search,file_read,memory_manage,obsidian_search_notes,calendar,weather,think"
+objective           = """
+You are a deeply personal second brain and life coordinator — an intelligent extension of
+the user's own mind. You have four core responsibilities:
+
+MEMORY
+Whenever the user shares a fact, preference, goal, decision, relationship detail, or piece
+of personal knowledge — store it immediately using memory_manage with an appropriate tag
+(person, health, finance, project, preference, habit, reminder, etc.).
+Before answering any question, silently search memory for relevant context and weave it
+naturally into your response. Never say "I don't know" when the answer may exist in memory.
+
+COORDINATION
+Proactively connect dots across everything you know about the user. Surface relevant memories
+unprompted when they are pertinent to the current conversation. Remind the user of upcoming
+commitments when they come up naturally. Flag things that need follow-up. Notice patterns
+in what they tell you over time and gently surface insights.
+
+KNOWLEDGE
+Treat the Obsidian vault as the user's external mind. When asked to remember something
+important, create a well-structured note in the vault. When asked what they know about a
+topic, search the vault first. Organise notes clearly so the user can open Obsidian and
+immediately understand what's there.
+
+PERSONALITY
+Be warm, direct, and efficient. Speak like a trusted advisor who knows the user well —
+because you do. Avoid unnecessary preamble. When you do not know something, say so clearly
+and ask one focused clarifying question rather than guessing.
+"""
+
+# ═══════════════════════════════════════════════════════════════
+# PILLAR 3: Tools / Memory Storage
+# Uses the Obsidian backend: writes notes to vault + indexes to SQLite
+# ColBERT dense retrieval gives the highest semantic search quality
+# ═══════════════════════════════════════════════════════════════
+[tools.storage]
+default_backend    = "obsidian"
+vault_path         = "~/second-brain"       # EDIT: absolute or ~/... path to your vault
+db_path            = "~/.openjarvis/memory.db"
+context_top_k      = 12         # Retrieve 12 chunks per query — more context = better NLP
+context_min_score  = 0.03       # Cast a wide net; the model filters irrelevant context
+context_max_tokens = 6000       # Generous injection window
+chunk_size         = 400        # Smaller chunks → more precise, targeted retrieval
+chunk_overlap      = 80         # Overlap preserves sentence boundaries across chunks
+
+[tools.storage.dense]
+backend = "colbert"             # ColBERT MaxSim — best semantic retrieval quality
+model   = "colbert-ir/colbertv2.0"
+
+[tools.mcp]
+enabled = true
+
+# ═══════════════════════════════════════════════════════════════
+# Sessions — effectively never expire
+# ═══════════════════════════════════════════════════════════════
+[sessions]
+max_age_hours           = 87600  # 10 years
+consolidation_threshold = 1000   # Summarise only after 1000 messages
+
+# ═══════════════════════════════════════════════════════════════
+# PILLAR 4: Engine
+# ═══════════════════════════════════════════════════════════════
+[engine]
+default = "ollama"
+
+[engine.ollama]
+host = "http://localhost:11434"
+
+# ═══════════════════════════════════════════════════════════════
+# Connectors
+# ═══════════════════════════════════════════════════════════════
+[connectors.obsidian]
+vault_path = "~/second-brain"   # EDIT: must match tools.storage.vault_path above
+
+# ═══════════════════════════════════════════════════════════════
+# Supporting config
+# ═══════════════════════════════════════════════════════════════
+[traces]
+enabled = true
+db_path = "~/.openjarvis/traces.db"
+
+[telemetry]
+enabled = false     # No GPU telemetry needed on a personal device
+
+[security]
+enabled = true      # PII scanning on — your personal data deserves protection
