@@ -13,7 +13,8 @@ from openjarvis.tools._stubs import BaseTool, ToolSpec
 class _BrowserSession:
     """Manages a shared Playwright browser session (lazy init)."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, headless: bool = True) -> None:
+        self._headless = headless
         self._playwright = None
         self._browser = None
         self._page = None
@@ -28,7 +29,7 @@ class _BrowserSession:
                 "playwright not installed. Install with: uv sync --extra browser"
             )
         self._playwright = sync_playwright().start()
-        self._browser = self._playwright.chromium.launch(headless=True)
+        self._browser = self._playwright.chromium.launch(headless=self._headless)
         self._page = self._browser.new_page()
 
     @property
@@ -44,7 +45,22 @@ class _BrowserSession:
         self._playwright = self._browser = self._page = None
 
 
-_session = _BrowserSession()
+# Two module-level sessions — headless (background tasks) and headed (account
+# creation flows where the user needs to see what's happening / intervene).
+_session = _BrowserSession(headless=True)
+_session_headed = _BrowserSession(headless=False)
+
+# Tracks which session is currently "active" so that click/type/extract tools
+# automatically follow whichever session the last navigate opened.
+_active_session: _BrowserSession = _session
+
+
+def _get_session(headed: bool) -> _BrowserSession:
+    """Return the appropriate session and update the module-level active pointer."""
+    global _active_session
+    chosen = _session_headed if headed else _session
+    _active_session = chosen
+    return chosen
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +82,8 @@ class BrowserNavigateTool(BaseTool):
             description=(
                 "Navigate to a URL in the browser."
                 " Returns the page title and text content."
+                " Set headed=true to open a visible browser window (required for"
+                " account creation flows where you may need to intervene)."
             ),
             parameters={
                 "type": "object",
@@ -79,6 +97,15 @@ class BrowserNavigateTool(BaseTool):
                         "description": (
                             "Wait condition: 'load', 'domcontentloaded',"
                             " or 'networkidle'. Default: 'load'."
+                        ),
+                    },
+                    "headed": {
+                        "type": "boolean",
+                        "description": (
+                            "If true, open a visible (non-headless) browser window."
+                            " Subsequent browser_click/browser_type calls will also"
+                            " use this visible session until headed=false is used."
+                            " Default: false."
                         ),
                     },
                 },
@@ -101,6 +128,8 @@ class BrowserNavigateTool(BaseTool):
         if wait_for not in ("load", "domcontentloaded", "networkidle"):
             wait_for = "load"
 
+        headed = bool(params.get("headed", False))
+
         # SSRF check
         try:
             from openjarvis.security.ssrf import check_ssrf
@@ -113,10 +142,11 @@ class BrowserNavigateTool(BaseTool):
                     success=False,
                 )
         except ImportError:
-            pass  # ssrf module not available, skip check
+            pass
 
         try:
-            page = _session.page
+            session = _get_session(headed)
+            page = session.page
             response = page.goto(url, wait_until=wait_for)
             title = page.title()
             text_content = page.inner_text("body")
@@ -128,7 +158,7 @@ class BrowserNavigateTool(BaseTool):
                 tool_name="browser_navigate",
                 content=f"Title: {title}\n\n{text_content}",
                 success=True,
-                metadata={"url": url, "title": title, "status": status},
+                metadata={"url": url, "title": title, "status": status, "headed": headed},
             )
         except ImportError:
             return ToolResult(
@@ -198,7 +228,7 @@ class BrowserClickTool(BaseTool):
         by_text = params.get("by_text", False)
 
         try:
-            page = _session.page
+            page = _active_session.page
             if by_text:
                 page.get_by_text(selector).click()
             else:
@@ -289,7 +319,7 @@ class BrowserTypeTool(BaseTool):
         clear = params.get("clear", True)
 
         try:
-            page = _session.page
+            page = _active_session.page
             if clear:
                 page.fill(selector, text)
             else:
@@ -360,7 +390,7 @@ class BrowserScreenshotTool(BaseTool):
         full_page = params.get("full_page", False)
 
         try:
-            page = _session.page
+            page = _active_session.page
             screenshot_bytes = page.screenshot(full_page=full_page)
 
             if path:
@@ -453,7 +483,7 @@ class BrowserExtractTool(BaseTool):
             )
 
         try:
-            page = _session.page
+            page = _active_session.page
 
             if extract_type == "text":
                 content = page.inner_text(selector)

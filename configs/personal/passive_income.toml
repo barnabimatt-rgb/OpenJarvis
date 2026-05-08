@@ -33,6 +33,9 @@ context_from_memory = true
 tools               = """
 web_search, file_write, memory_manage, obsidian_search_notes,
 niche_discovery, affiliate_finder, seo_keywords, content_repurpose,
+analytics_summary, revenue_alert_check, utm_link,
+post_schedule, post_queue_list,
+credential_get, credential_save,
 beehiiv_create_draft, beehiiv_send, beehiiv_stats,
 ghost_create_draft, ghost_publish, ghost_list_posts,
 twitter_post_tweet, twitter_post_thread, twitter_get_metrics,
