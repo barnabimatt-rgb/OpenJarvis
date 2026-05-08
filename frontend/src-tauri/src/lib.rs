@@ -109,6 +109,48 @@ fn home_dir() -> String {
         .unwrap_or_default()
 }
 
+/// Read a string value from `~/.openjarvis/config.toml`.
+///
+/// Scans for `[section]` then looks for `key = "value"` within that section.
+/// Returns `None` if the file, section, or key is absent.
+fn read_config_setting(section: &str, key: &str) -> Option<String> {
+    let config_path = format!("{}/.openjarvis/config.toml", home_dir());
+    let contents = std::fs::read_to_string(&config_path).ok()?;
+
+    let section_header = format!("[{}]", section);
+    let mut in_section = false;
+
+    for line in contents.lines() {
+        let trimmed = line.trim();
+        // Track which [section] we're in
+        if trimmed.starts_with('[') {
+            in_section = trimmed == section_header;
+            continue;
+        }
+        if !in_section {
+            continue;
+        }
+        // Match `key = "value"` or `key = 'value'` (allow whitespace around =)
+        if let Some(rest) = trimmed.strip_prefix(key) {
+            let rest = rest.trim();
+            if let Some(rest) = rest.strip_prefix('=') {
+                let value = rest.trim().trim_matches('"').trim_matches('\'');
+                if !value.is_empty() {
+                    return Some(value.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Return true if the model name refers to a cloud-hosted model.
+/// Cloud models (e.g. "deepseek-v4-pro:cloud") are served remotely by Ollama
+/// and must not be pulled locally.
+fn is_cloud_model(model: &str) -> bool {
+    model.ends_with(":cloud")
+}
+
 /// Resolve full path to a binary by checking common locations.
 /// macOS .app bundles don't inherit the shell PATH, so we probe manually.
 fn resolve_bin(name: &str) -> String {
@@ -641,6 +683,21 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
         FALLBACK_MODEL
     };
 
+    // Override model/agent with user config if present
+    let config_model = read_config_setting("intelligence", "default_model");
+    let config_agent = read_config_setting("agent", "default_agent")
+        .unwrap_or_else(|| "simple".to_string());
+
+    // Resolve the model to actually launch:
+    // - Cloud models (":cloud" suffix) are served remotely — use as-is, no pull needed.
+    // - Local config models that are already downloaded — use them.
+    // - Otherwise fall back to whatever we just pulled locally.
+    let final_model: String = match &config_model {
+        Some(m) if is_cloud_model(m) => m.clone(),
+        Some(m) if ollama_has_model(m).await => m.clone(),
+        _ => startup_model.to_string(),
+    };
+
     let root = project_root.as_ref().unwrap();
 
     // Install dependencies automatically (handles fresh clones)
@@ -665,7 +722,7 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
         let mut s = status.lock().await;
         s.detail = format!(
             "Starting server with {} from {}...",
-            startup_model,
+            final_model,
             root.display(),
         );
     }
@@ -678,9 +735,9 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
         "--port",
         &JARVIS_PORT.to_string(),
         "--model",
-        startup_model,
+        &final_model,
         "--agent",
-        "simple",
+        &config_agent,
     ])
     .stdout(std::process::Stdio::null())
     .stderr(std::process::Stdio::piped())
