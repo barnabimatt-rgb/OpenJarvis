@@ -1,0 +1,222 @@
+# OpenJarvis — Affiliate Marketing Engine Configuration
+#
+# This config runs a dedicated affiliate-focused operative agent alongside
+# (or instead of) the main passive_income.toml agent.
+#
+# Setup:
+#   1. Copy to ~/.openjarvis/config.toml  OR reference as a named config
+#   2. Add API keys to ~/.openjarvis/cloud-keys.env
+#   3. Run: jarvis serve
+#
+# Affiliate philosophy:
+#   - Only recommend products you would genuinely use yourself
+#   - Disclose affiliate relationships clearly ("I earn a commission if you buy")
+#   - Focus on solving reader problems FIRST, affiliate links are secondary
+
+# ═══════════════════════════════════════════════════════════════
+# INTELLIGENCE
+# ═══════════════════════════════════════════════════════════════
+[intelligence]
+default_model      = "deepseek-v4-pro:cloud"
+fallback_model     = "qwen2.5:7b"
+preferred_engine   = "ollama"
+provider           = "local"
+temperature        = 0.7
+max_tokens         = 8192
+top_p              = 0.95
+repetition_penalty = 1.05
+
+# ═══════════════════════════════════════════════════════════════
+# AGENT — Affiliate Content Engine
+# Runs at 6 AM daily (one hour before main digest)
+# ═══════════════════════════════════════════════════════════════
+[agent]
+default_agent       = "operative"
+max_turns           = 25
+context_from_memory = true
+tools               = """
+web_search, file_write, memory_manage, obsidian_search_notes,
+niche_discovery, affiliate_finder, seo_keywords, content_repurpose,
+beehiiv_create_draft, ghost_create_draft,
+devto_create_draft, medium_create_draft,
+twitter_post_thread,
+convertkit_create_broadcast,
+lemon_squeezy_revenue, gumroad_sales_summary
+"""
+objective           = """
+You are an affiliate marketing content engine. Your job is to find the best
+affiliate programs in growing niches and produce SEO-optimised, genuinely
+helpful content that earns commissions passively.
+
+═══ DAILY 6 AM ROUTINE ═══
+
+STEP 1 — NICHE + AFFILIATE RESEARCH
+a. Run niche_discovery(top_k=3, min_score=55) to find today's best niche.
+b. Run affiliate_finder(niche=<chosen_niche>, top_k=5) to find relevant programs.
+c. Run seo_keywords(seed=<chosen_niche>, top_k=15, difficulty_filter="low") to
+   find low-competition keywords for SEO content.
+d. Store results in memory: "affiliate_niche_today", "affiliate_programs_today",
+   "affiliate_keywords_today".
+
+STEP 2 — CONTENT CREATION
+Choose the top 3 low-competition keywords from Step 1c. For each keyword, write
+a complete SEO blog post optimised for affiliate conversions.
+
+For EACH blog post draft, save to:
+  ~/second-brain/Content/Blog/affiliate/YYYY-MM-DD-<slug>.md
+
+Post structure:
+  ---
+  title: <SEO headline 50–60 chars>
+  meta_description: <150 chars>
+  target_keyword: <primary keyword>
+  affiliate_programs: [<program1>, <program2>]
+  estimated_commission: <range>
+  date: YYYY-MM-DD
+  status: draft
+  ---
+  # <Title>
+
+  > *Disclosure: This post contains affiliate links. I earn a commission
+  > if you purchase through them, at no extra cost to you.*
+
+  <Introduction — hook + what reader will learn — 100 words>
+
+  ## <H2: Problem or opportunity context>
+  <150 words>
+
+  ## <H2: Solutions — products/tools that solve it>
+  <200 words — naturally weave in affiliate products with genuine recommendations>
+
+  ## <H2: Step-by-step guide or comparison>
+  <250 words>
+
+  ## <H2: My top recommendation>
+  <100 words — name the best affiliate product and explain why>
+
+  ## Conclusion
+  <60 words + newsletter CTA>
+
+STEP 3 — EMAIL SEQUENCE DRAFT
+Write a 3-email nurture sequence for the niche (email list → affiliate conversion).
+Save to: ~/second-brain/Content/Newsletter/affiliate/YYYY-MM-DD-<niche>-sequence.md
+
+Email 1: Welcome + free value (no affiliate pitch)
+Email 2: Problem deepening + soft recommendation (1 affiliate link)
+Email 3: Specific tool review + hard CTA with affiliate link
+
+STEP 4 — TRACK & OPTIMISE
+Pull lemon_squeezy_revenue and gumroad_sales_summary.
+Compare to yesterday's snapshot in memory ("affiliate_revenue_yesterday").
+Note any content pieces that drove sales (if trackable via UTM logic).
+Update memory: "affiliate_revenue_yesterday" with today's numbers.
+
+STEP 5 — SUMMARY
+Output:
+  • Niche: <topic>
+  • Keywords targeted: <kw1>, <kw2>, <kw3>
+  • Affiliate programs featured: <list>
+  • Blog posts drafted: N → ~/second-brain/Content/Blog/affiliate/
+  • Email sequence drafted: ~/second-brain/Content/Newsletter/affiliate/
+  • Revenue today: $X (Lemon Squeezy) + $X (Gumroad)
+
+═══ AFFILIATE PRINCIPLES ═══
+1. NEVER recommend a product you haven't verified has real user value
+2. ALWAYS disclose: start every post with the affiliate disclosure block
+3. Prioritise RECURRING commission products (SaaS > one-time)
+4. Long-tail keywords only — avoid head terms where you can't compete
+5. Content quality > content quantity — one excellent post > ten thin ones
+6. Rotate niches — check memory for "used_niches" to avoid repetition
+"""
+
+[agent.schedule]
+schedule_type  = "cron"
+schedule_value = "0 6 * * *"   # 6 AM daily — before main morning digest
+
+# ═══════════════════════════════════════════════════════════════
+# Memory / Storage
+# ═══════════════════════════════════════════════════════════════
+[tools.storage]
+default_backend    = "obsidian"
+vault_path         = "~/second-brain"
+db_path            = "~/.openjarvis/memory.db"
+context_top_k      = 10
+context_min_score  = 0.03
+context_max_tokens = 5000
+chunk_size         = 400
+chunk_overlap      = 80
+
+[tools.storage.dense]
+backend = "colbert"
+model   = "colbert-ir/colbertv2.0"
+
+[tools.mcp]
+enabled = true
+
+[sessions]
+max_age_hours           = 87600
+consolidation_threshold = 1000
+
+[engine]
+default = "ollama"
+
+[engine.ollama]
+host = "http://localhost:11434"
+
+# ═══════════════════════════════════════════════════════════════
+# Connectors
+# ═══════════════════════════════════════════════════════════════
+[connectors.obsidian]
+vault_path = "~/second-brain"
+
+[connectors.beehiiv]
+publication_id = ""   # Set in cloud-keys.env: BEEHIIV_PUBLICATION_ID
+
+[connectors.ghost]
+admin_url = ""        # Set in cloud-keys.env: GHOST_ADMIN_URL
+
+[connectors.medium]
+# Set in cloud-keys.env: MEDIUM_INTEGRATION_TOKEN
+
+[connectors.devto]
+# Set in cloud-keys.env: DEVTO_API_KEY
+
+[connectors.convertkit]
+# Set in cloud-keys.env: CONVERTKIT_API_KEY
+
+[connectors.lemon_squeezy]
+# Set in cloud-keys.env: LEMON_SQUEEZY_API_KEY
+
+[connectors.gumroad]
+# Set in cloud-keys.env: GUMROAD_ACCESS_TOKEN
+
+# ═══════════════════════════════════════════════════════════════
+# Supporting
+# ═══════════════════════════════════════════════════════════════
+[traces]
+enabled = true
+db_path = "~/.openjarvis/traces.db"
+
+[telemetry]
+enabled = false
+
+[security]
+enabled = true
+
+# ═══════════════════════════════════════════════════════════════
+# API KEYS — add to ~/.openjarvis/cloud-keys.env:
+#
+#   BEEHIIV_API_KEY=your_key
+#   BEEHIIV_PUBLICATION_ID=pub_xxxxxxxxxxxx
+#   GHOST_ADMIN_URL=https://yourblog.ghost.io
+#   GHOST_ADMIN_API_KEY=id:secret
+#   MEDIUM_INTEGRATION_TOKEN=your_token
+#   DEVTO_API_KEY=your_key
+#   CONVERTKIT_API_KEY=your_key
+#   LEMON_SQUEEZY_API_KEY=your_key
+#   GUMROAD_ACCESS_TOKEN=your_token
+#   TWITTER_API_KEY=your_key
+#   TWITTER_API_SECRET=your_secret
+#   TWITTER_ACCESS_TOKEN=your_token
+#   TWITTER_ACCESS_SECRET=your_secret
+# ═══════════════════════════════════════════════════════════════

@@ -32,11 +32,19 @@ max_turns           = 30
 context_from_memory = true
 tools               = """
 web_search, file_write, memory_manage, obsidian_search_notes,
-niche_discovery,
+niche_discovery, affiliate_finder, seo_keywords, content_repurpose,
 beehiiv_create_draft, beehiiv_send, beehiiv_stats,
 ghost_create_draft, ghost_publish, ghost_list_posts,
 twitter_post_tweet, twitter_post_thread, twitter_get_metrics,
-stripe_revenue_summary, gumroad_sales_summary
+medium_create_draft, medium_publish,
+linkedin_post, linkedin_share_article,
+reddit_post_link, reddit_post_text, reddit_subreddit_info,
+devto_create_draft, devto_publish, devto_article_stats,
+convertkit_subscriber_stats, convertkit_create_broadcast,
+youtube_channel_stats, youtube_generate_metadata, youtube_recent_videos,
+patreon_summary,
+stripe_revenue_summary, gumroad_sales_summary,
+lemon_squeezy_revenue
 """
 objective           = """
 You are an autonomous passive income engine and personal second brain.
@@ -212,6 +220,38 @@ publication_id = ""   # Find in Beehiiv → Settings → Publication → ID
 [connectors.ghost]
 admin_url = ""   # e.g. https://yourblog.ghost.io
 
+[connectors.medium]
+# Set in cloud-keys.env: MEDIUM_INTEGRATION_TOKEN
+
+[connectors.twitter]
+# Set in cloud-keys.env: TWITTER_API_KEY, TWITTER_API_SECRET,
+# TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET
+
+[connectors.linkedin]
+# Set in cloud-keys.env: LINKEDIN_ACCESS_TOKEN, LINKEDIN_PERSON_URN
+
+[connectors.reddit_publisher]
+# Set in cloud-keys.env: REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET,
+# REDDIT_USERNAME, REDDIT_PASSWORD
+
+[connectors.devto]
+# Set in cloud-keys.env: DEVTO_API_KEY
+
+[connectors.convertkit]
+# Set in cloud-keys.env: CONVERTKIT_API_KEY
+
+[connectors.youtube]
+# Set in cloud-keys.env: YOUTUBE_API_KEY
+
+[connectors.patreon]
+# Set in cloud-keys.env: PATREON_ACCESS_TOKEN
+
+[connectors.stripe]
+# Set in cloud-keys.env: STRIPE_SECRET_KEY (use restricted read-only key)
+
+[connectors.lemon_squeezy]
+# Set in cloud-keys.env: LEMON_SQUEEZY_API_KEY
+
 # ═══════════════════════════════════════════════════════════════
 # Supporting config
 # ═══════════════════════════════════════════════════════════════
@@ -228,14 +268,33 @@ enabled = true
 # ═══════════════════════════════════════════════════════════════
 # API KEYS — add to ~/.openjarvis/cloud-keys.env (one per line):
 #
+# Publishing
 #   BEEHIIV_API_KEY=your_key_here
 #   BEEHIIV_PUBLICATION_ID=pub_xxxxxxxxxxxx
 #   GHOST_ADMIN_URL=https://yourblog.ghost.io
-#   GHOST_ADMIN_API_KEY=xxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#   GHOST_ADMIN_API_KEY=id:secret
+#   MEDIUM_INTEGRATION_TOKEN=your_token
+#   DEVTO_API_KEY=your_key
+#   CONVERTKIT_API_KEY=your_key
+#
+# Social
 #   TWITTER_API_KEY=your_key
 #   TWITTER_API_SECRET=your_secret
 #   TWITTER_ACCESS_TOKEN=your_token
 #   TWITTER_ACCESS_SECRET=your_access_secret
+#   LINKEDIN_ACCESS_TOKEN=your_token
+#   LINKEDIN_PERSON_URN=urn:li:person:XXXXXX
+#   REDDIT_CLIENT_ID=your_id
+#   REDDIT_CLIENT_SECRET=your_secret
+#   REDDIT_USERNAME=your_username
+#   REDDIT_PASSWORD=your_password
+#
+# Video
+#   YOUTUBE_API_KEY=your_key
+#
+# Revenue / Membership
 #   STRIPE_SECRET_KEY=rk_live_xxxx   (use RESTRICTED read-only key)
 #   GUMROAD_ACCESS_TOKEN=your_token
+#   LEMON_SQUEEZY_API_KEY=your_key
+#   PATREON_ACCESS_TOKEN=your_oauth_creator_token
 # ═══════════════════════════════════════════════════════════════
