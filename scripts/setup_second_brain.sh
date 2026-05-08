@@ -28,7 +28,7 @@ echo ""
 
 # ── 1. Create Obsidian vault folder structure ─────────────────────────────────
 info "Creating vault at $VAULT ..."
-mkdir -p "$VAULT"/{Jarvis/{Memories,Journal,Tasks},Areas,Projects,Resources,Archive}
+mkdir -p "$VAULT"/{Jarvis/{Memories,Journal,Tasks},Areas,Projects,Resources,Archive,Content/{Newsletter,Blog,Twitter,YouTube},Income/{Revenue,Ideas,Analytics}}
 success "Vault folders created."
 
 # ── 2. Vault README ───────────────────────────────────────────────────────────

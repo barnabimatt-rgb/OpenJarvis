@@ -71,7 +71,14 @@ $folders = @(
     "Areas",
     "Projects",
     "Resources",
-    "Archive"
+    "Archive",
+    "Content\Newsletter",
+    "Content\Blog",
+    "Content\Twitter",
+    "Content\YouTube",
+    "Income\Revenue",
+    "Income\Ideas",
+    "Income\Analytics"
 )
 foreach ($f in $folders) {
     $dir = Join-Path $VaultPath $f

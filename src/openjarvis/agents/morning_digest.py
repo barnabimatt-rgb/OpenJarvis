@@ -83,9 +83,14 @@ class MorningDigestAgent(ToolUsingAgent):
             "4. HEALTH — Interpret trends, not raw numbers. 'Your sleep has "
             "improved three nights running and your readiness is strong' — "
             "not 'HRV 53, HR 56.' If multiple days of data, compare.\n\n"
-            "5. WORLD — Weather forecast, top news (AI/tech, business, "
+            "5. INCOME (only if income data is present) — State revenue "
+            "in plain language: 'You made $X today, MRR is $X, and you have "
+            "N new customers this week.' If drafts were generated overnight, "
+            "name them: 'Your newsletter draft on <topic> is ready for review.' "
+            "NEVER mention $0 values or unconfigured sources.\n\n"
+            "6. WORLD — Weather forecast, top news (AI/tech, business, "
             "general). Skip if no data.\n\n"
-            "6. CLOSING — One forward-looking sentence with the honorific.\n\n"
+            "7. CLOSING — One forward-looking sentence with the honorific.\n\n"
             "ABSOLUTE RULES (violations are unacceptable):\n"
             "- ONLY facts from the data. Zero hallucination.\n"
             "- NEVER mention disconnected or unavailable sources.\n"
@@ -111,6 +116,7 @@ class MorningDigestAgent(ToolUsingAgent):
             "calendar": ["gcalendar"],
             "health": ["oura", "apple_health"],
             "world": ["weather", "hackernews", "news_rss"],
+            "income": ["stripe", "gumroad"],
             "music": ["spotify", "apple_music"],
         }
         sources = set()

@@ -1,0 +1,241 @@
+# OpenJarvis — Passive Income Engine Configuration
+#
+# Setup:
+#   1. Copy to ~/.openjarvis/config.toml (or use alongside second_brain.toml)
+#   2. Add API keys to ~/.openjarvis/cloud-keys.env (see bottom of this file)
+#   3. Run: bash scripts/setup_second_brain.sh ~/second-brain
+#   4. Start: jarvis serve   (daemon starts, runs 7 AM job automatically)
+
+# ═══════════════════════════════════════════════════════════════
+# PILLAR 1: Intelligence
+# Primary:  deepseek-v4-pro:cloud — best reasoning for niche research + writing
+# Fallback: qwen2.5:7b            — local, fully offline
+# ═══════════════════════════════════════════════════════════════
+[intelligence]
+default_model      = "deepseek-v4-pro:cloud"
+fallback_model     = "qwen2.5:7b"
+preferred_engine   = "ollama"
+provider           = "local"
+temperature        = 0.72       # Creative enough for engaging content, grounded enough for accuracy
+max_tokens         = 8192       # Full blog posts + newsletter issues need headroom
+top_p              = 0.95
+top_k              = 50
+repetition_penalty = 1.05
+
+# ═══════════════════════════════════════════════════════════════
+# PILLAR 2: Agent — Content Pipeline + Second Brain combined
+# Runs at 7 AM daily. Discovers niche → researches → drafts content → checks revenue.
+# ═══════════════════════════════════════════════════════════════
+[agent]
+default_agent       = "operative"
+max_turns           = 30
+context_from_memory = true
+tools               = """
+web_search, file_write, memory_manage, obsidian_search_notes,
+niche_discovery,
+beehiiv_create_draft, beehiiv_send, beehiiv_stats,
+ghost_create_draft, ghost_publish, ghost_list_posts,
+twitter_post_tweet, twitter_post_thread, twitter_get_metrics,
+stripe_revenue_summary, gumroad_sales_summary
+"""
+objective           = """
+You are an autonomous passive income engine and personal second brain.
+
+═══ DAILY 7 AM ROUTINE ═══
+
+STEP 1 — REVENUE CHECK
+Pull stripe_revenue_summary and gumroad_sales_summary.
+Log the combined snapshot to Content as:
+  ~/second-brain/Income/Revenue/YYYY-MM-DD.md
+Format:
+  # Revenue — YYYY-MM-DD
+  - Stripe MRR: $X.XX
+  - Stripe today: $X.XX
+  - Stripe new customers (7d): N
+  - Gumroad today: $X.XX
+  - Gumroad this month: $X.XX
+  - Gumroad all time: $X.XX
+Flag any unusual spikes or drops with a ⚠️ emoji and a one-sentence note.
+
+STEP 2 — NICHE DISCOVERY
+Run niche_discovery(top_k=5, min_score=50).
+Pick the highest-scoring niche that has NOT been used in the last 14 days
+(check memory for "used_niches" list).
+Update memory: add today's niche to "used_niches" with today's date.
+Store the niche choice and rationale in memory as "today_niche".
+
+STEP 3 — RESEARCH
+Use web_search to gather 8–12 facts about the chosen niche:
+  - One surprising statistic
+  - One common misconception to debunk
+  - Two monetization angles (tools, courses, services, affiliate programs)
+  - Three content hooks (questions people are already asking)
+Store the research summary in memory as "today_research".
+
+STEP 4 — GENERATE DRAFTS (all saved to Obsidian for human review before publishing)
+
+4a. NEWSLETTER DRAFT → ~/second-brain/Content/Newsletter/YYYY-MM-DD-<slug>.md
+Structure:
+  ---
+  niche: <topic>
+  score: <niche score>
+  date: YYYY-MM-DD
+  status: draft
+  ---
+  # <Compelling subject line>
+  **Preview:** <One sentence hook>
+
+  ## The Opportunity
+  <Why this niche matters now — 80 words>
+
+  ## What Nobody Is Saying
+  <Contrarian insight or debunked myth — 100 words>
+
+  ## How To Profit From It
+  <Two concrete monetization paths with specific tools/affiliate programs — 120 words>
+
+  ## Your Next Move
+  <Single clear CTA — 40 words>
+
+  ---
+  *Reply to this email with your thoughts. Forward it to one person who'd find it useful.*
+
+4b. BLOG POST DRAFT → ~/second-brain/Content/Blog/YYYY-MM-DD-<slug>.md
+Structure:
+  ---
+  title: <SEO-optimised headline (50–60 chars)>
+  meta_description: <150-char SEO meta description>
+  tags: [<tag1>, <tag2>, <tag3>]
+  niche: <topic>
+  date: YYYY-MM-DD
+  status: draft
+  ---
+  # <Title>
+  <Intro paragraph — hook + thesis — 80 words>
+
+  ## <H2 — Context / Why now>
+  <150 words>
+
+  ## <H2 — The Problem / Opportunity>
+  <150 words>
+
+  ## <H2 — How It Works / Step by step>
+  <200 words>
+
+  ## <H2 — Tools & Resources>
+  <150 words with specific affiliate-friendly recommendations>
+
+  ## <H2 — Getting Started Today>
+  <100 words with clear first step>
+
+  ## Conclusion
+  <50 words + CTA to subscribe to newsletter>
+
+4c. TWITTER THREADS (3 threads) → ~/second-brain/Content/Twitter/YYYY-MM-DD-thread-N.md
+Each thread = 10 tweets. Format:
+  ---
+  angle: <content angle description>
+  niche: <topic>
+  date: YYYY-MM-DD
+  status: draft
+  ---
+  TWEET 1 (hook): <Bold claim or surprising stat — max 240 chars>
+  TWEET 2: <Expand the hook — what most people miss>
+  TWEET 3–8: <One insight per tweet, numbered "3/" through "8/">
+  TWEET 9: <Monetization angle — tool, course, or service recommendation>
+  TWEET 10 (CTA): <Follow for more. Subscribe to [newsletter name] → [link]>
+Use three different angles from the niche research.
+
+STEP 5 — SUMMARY
+Output a 5-bullet summary:
+  • Niche chosen: <topic> (score: X/100)
+  • Newsletter draft: ~/second-brain/Content/Newsletter/<filename>
+  • Blog post draft: ~/second-brain/Content/Blog/<filename>
+  • Twitter threads: 3 drafts in ~/second-brain/Content/Twitter/
+  • Revenue snapshot: MRR $X · Today $X · Gumroad $X
+
+═══ ON-DEMAND REQUESTS ═══
+When the user asks you to publish, use the appropriate connector tool.
+Always confirm before publishing (requires_confirmation tools will prompt).
+When the user shares facts about themselves, store them in memory and MEMORY.md.
+"""
+
+[agent.schedule]
+schedule_type  = "cron"
+schedule_value = "0 7 * * *"   # Every day at 7:00 AM local time
+
+# ═══════════════════════════════════════════════════════════════
+# PILLAR 3: Tools / Memory
+# ═══════════════════════════════════════════════════════════════
+[tools.storage]
+default_backend    = "obsidian"
+vault_path         = "~/second-brain"       # EDIT: set to your vault path
+db_path            = "~/.openjarvis/memory.db"
+context_top_k      = 12
+context_min_score  = 0.03
+context_max_tokens = 6000
+chunk_size         = 400
+chunk_overlap      = 80
+
+[tools.storage.dense]
+backend = "colbert"
+model   = "colbert-ir/colbertv2.0"
+
+[tools.mcp]
+enabled = true
+
+# ═══════════════════════════════════════════════════════════════
+# Sessions — never expire
+# ═══════════════════════════════════════════════════════════════
+[sessions]
+max_age_hours           = 87600
+consolidation_threshold = 1000
+
+# ═══════════════════════════════════════════════════════════════
+# PILLAR 4: Engine
+# ═══════════════════════════════════════════════════════════════
+[engine]
+default = "ollama"
+
+[engine.ollama]
+host = "http://localhost:11434"
+
+# ═══════════════════════════════════════════════════════════════
+# Connectors
+# ═══════════════════════════════════════════════════════════════
+[connectors.obsidian]
+vault_path = "~/second-brain"       # EDIT: match tools.storage.vault_path
+
+[connectors.beehiiv]
+publication_id = ""   # Find in Beehiiv → Settings → Publication → ID
+
+[connectors.ghost]
+admin_url = ""   # e.g. https://yourblog.ghost.io
+
+# ═══════════════════════════════════════════════════════════════
+# Supporting config
+# ═══════════════════════════════════════════════════════════════
+[traces]
+enabled = true
+db_path = "~/.openjarvis/traces.db"
+
+[telemetry]
+enabled = false
+
+[security]
+enabled = true
+
+# ═══════════════════════════════════════════════════════════════
+# API KEYS — add to ~/.openjarvis/cloud-keys.env (one per line):
+#
+#   BEEHIIV_API_KEY=your_key_here
+#   BEEHIIV_PUBLICATION_ID=pub_xxxxxxxxxxxx
+#   GHOST_ADMIN_URL=https://yourblog.ghost.io
+#   GHOST_ADMIN_API_KEY=xxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#   TWITTER_API_KEY=your_key
+#   TWITTER_API_SECRET=your_secret
+#   TWITTER_ACCESS_TOKEN=your_token
+#   TWITTER_ACCESS_SECRET=your_access_secret
+#   STRIPE_SECRET_KEY=rk_live_xxxx   (use RESTRICTED read-only key)
+#   GUMROAD_ACCESS_TOKEN=your_token
+# ═══════════════════════════════════════════════════════════════
