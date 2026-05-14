@@ -15,6 +15,35 @@ from openjarvis.skills.types import SkillManifest
 from openjarvis.tools._stubs import BaseTool, ToolExecutor
 
 
+class SkillCatalog:
+    """Manages skill installation and syncing from remote sources."""
+
+    def __init__(self, target_root: Path):
+        self.target_root = target_root
+
+    def install(self, source_name: str, skill_name: str):
+        from openjarvis.skills.sources.hermes import HermesResolver
+        from openjarvis.skills.sources.openclaw import OpenClawResolver
+        from openjarvis.skills.importer import SkillImporter
+        from openjarvis.skills.parser import SkillParser
+        from openjarvis.skills.tool_translator import ToolTranslator
+
+        resolvers = {
+            "hermes": HermesResolver(),
+            "openclaw": OpenClawResolver(),
+        }
+        resolver = resolvers.get(source_name)
+        if not resolver:
+            raise ValueError(f"Unknown source: {source_name}")
+
+        resolver.sync()
+        skills = resolver.resolve(skill_name)
+        if not skills:
+            raise ValueError(f"Skill '{skill_name}' not found in source '{source_name}'")
+
+        importer = SkillImporter(SkillParser(), ToolTranslator(), target_root=self.target_root)
+        return importer.import_skill(skills[0])
+
 class SkillManager:
     """Coordinate skill discovery, resolution, catalog generation, and execution.
 

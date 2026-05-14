@@ -91,6 +91,35 @@ def _parse_frontmatter(text: str) -> Tuple[Dict[str, Any], str]:
 # ---------------------------------------------------------------------------
 
 
+class ObsidianNoteManager:
+    """Manages note creation and updates in an Obsidian vault."""
+
+    def __init__(self, vault_path: Path):
+        self.vault_path = vault_path
+
+    def create_note(self, title: str, content: str, folder: str = "", frontmatter: Dict[str, Any] = None):
+        target_dir = self.vault_path / folder
+        target_dir.mkdir(parents=True, exist_ok=True)
+        fpath = target_dir / f"{title}.md"
+
+        fm_block = ""
+        if frontmatter:
+            fm_block = "---\n"
+            for k, v in frontmatter.items():
+                fm_block += f"{k}: {v}\n"
+            fm_block += "---\n\n"
+
+        fpath.write_text(fm_block + content, encoding="utf-8")
+        return fpath
+
+    def append_to_note(self, title: str, content: str):
+        # Simplistic: search for note by title in vault
+        for fpath in self.vault_path.rglob(f"{title}.md"):
+            with fpath.open("a", encoding="utf-8") as f:
+                f.write("\n" + content)
+            return fpath
+        return None
+
 @ConnectorRegistry.register("obsidian")
 class ObsidianConnector(BaseConnector):
     """Connector that reads a local Obsidian (or plain Markdown) vault.
@@ -107,10 +136,12 @@ class ObsidianConnector(BaseConnector):
     auth_type = "filesystem"
 
     def __init__(self, vault_path: str = "") -> None:
-        self._vault_path = vault_path
-        self._connected: bool = bool(vault_path) and Path(vault_path).is_dir()
+        # Handle Windows paths robustly
+        self._vault_path = vault_path.replace("\\", "/") if vault_path else ""
+        self._connected: bool = bool(self._vault_path) and Path(self._vault_path).is_dir()
         self._items_synced: int = 0
         self._items_total: int = 0
+        self.note_manager = ObsidianNoteManager(Path(self._vault_path)) if self._connected else None
 
     # ------------------------------------------------------------------
     # BaseConnector interface
